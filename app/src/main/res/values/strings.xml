@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Milobellla</string>
+    <string name="action_settings">Paramètres</string>
+    <string name="hello_world">Salut !</string>
+    <string name="speech_prompt">Vas-y dis un truc&#8230;</string>
+    <string name="speech_not_supported">Ah mince, ton appareil n\'est pas compatible !</string>
+    <string name="tap_on_mic">Appuie sur le micro pour parler</string>
+    <string name="wake_word">stop</string>
+</resources>
