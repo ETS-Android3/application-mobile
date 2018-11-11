@@ -2,6 +2,7 @@ package fr.celiangarcia.milobellla;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Color;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
@@ -9,21 +10,22 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements
@@ -32,6 +34,10 @@ public class MainActivity extends AppCompatActivity implements
     Button bouton;
 
     private TextToSpeech tts;
+
+    private ListView mListView;
+    private List<Show> shows;
+    private ShowAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +49,8 @@ public class MainActivity extends AppCompatActivity implements
         txtOutput = (TextView) findViewById(R.id.text);
         bouton = (Button) findViewById(R.id.button);
 
+        mListView = (ListView) findViewById(R.id.listView);
+
         bouton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -52,6 +60,11 @@ public class MainActivity extends AppCompatActivity implements
                 startSpeechToText();
             }
         });
+
+        shows = genererTweets();
+
+        adapter = new ShowAdapter(MainActivity.this, shows);
+        mListView.setAdapter(adapter);
 
     }
 
@@ -107,6 +120,17 @@ public class MainActivity extends AppCompatActivity implements
                             // Display the first 500 characters of the response string.
                             try {
                                 txtOutput.setText(response.getString("vocal"));
+                                shows.clear();
+                                if (response.has("visu")) {
+                                    JSONArray getArray = response.getJSONArray("visu");
+                                    for(int i = 0; i < getArray.length(); i++) {
+                                        JSONObject obj = getArray.getJSONObject(i);
+                                        String title = obj.getString("title");
+                                        String display = obj.getString("display");
+                                        shows.add(new Show(Color.BLACK, title, display));
+                                    }
+                                }
+                                adapter.notifyDataSetChanged();
                                 speakOut();
                             } catch (JSONException e) {
                                 txtOutput.setText("That didn't work!");
@@ -162,6 +186,16 @@ public class MainActivity extends AppCompatActivity implements
         String text = txtOutput.getText().toString();
 
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+    }
+
+    private List<Show> genererTweets(){
+        List<Show> shows = new ArrayList<Show>();
+        shows.add(new Show(Color.BLACK, "Florent", "Mon premier tweet !"));
+        shows.add(new Show(Color.BLUE, "Kevin", "C'est ici que ça se passe !"));
+        shows.add(new Show(Color.GREEN, "Logan", "Que c'est beau..."));
+        shows.add(new Show(Color.RED, "Mathieu", "Il est quelle heure ??"));
+        shows.add(new Show(Color.GRAY, "Willy", "On y est presque"));
+        return shows;
     }
 
 }
