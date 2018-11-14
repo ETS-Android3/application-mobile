@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity implements
     private TextToSpeech tts;
 
     private ListView mListView;
-    private List<Show> shows;
+    private List<Show> shows = new ArrayList<>();
     private ShowAdapter adapter;
 
     private SpeechRecognizer recognizer;
@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements
     private static final String KWS_SEARCH = "wakeup";
 
     /* Keyword we are looking for to activate menu */
-    private static final String WAKEUPWORD = "salut";
+    private static final String WAKEUPWORD = "milobella";
 
     /* Used to handle permission request */
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -91,8 +91,6 @@ public class MainActivity extends AppCompatActivity implements
                 startSpeechToText();
             }
         });
-
-        shows = genererTweets();
 
         adapter = new ShowAdapter(MainActivity.this, shows);
         mListView.setAdapter(adapter);
@@ -303,10 +301,6 @@ public class MainActivity extends AppCompatActivity implements
     private void speakOut() {
         String text = txtOutput.getText().toString();
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, TTS_UTTERANCE);
-    }
-
-    private List<Show> genererTweets(){
-        return Collections.emptyList();
     }
 
     @Override
