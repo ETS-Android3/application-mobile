@@ -1,10 +1,17 @@
 package fr.celiangarcia.milobellla;
 
+import android.Manifest;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,12 +31,25 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import edu.cmu.pocketsphinx.Assets;
+import edu.cmu.pocketsphinx.Hypothesis;
+import edu.cmu.pocketsphinx.SpeechRecognizer;
+import edu.cmu.pocketsphinx.SpeechRecognizerSetup;
+
+import static android.widget.Toast.makeText;
+
 public class MainActivity extends AppCompatActivity implements
-        TextToSpeech.OnInitListener {
+        TextToSpeech.OnInitListener, edu.cmu.pocketsphinx.RecognitionListener {
+    public static final String ERROR_MESSAGE_USER = "That didn't work!";
+    public static final String TTS_UTTERANCE = "TTS_UTTERANCE";
     TextView txtOutput;
     Button bouton;
 
@@ -38,6 +58,17 @@ public class MainActivity extends AppCompatActivity implements
     private ListView mListView;
     private List<Show> shows;
     private ShowAdapter adapter;
+
+    private SpeechRecognizer recognizer;
+
+    /* Named searches allow to quickly reconfigure the decoder */
+    private static final String KWS_SEARCH = "wakeup";
+
+    /* Keyword we are looking for to activate menu */
+    private static final String WAKEUPWORD = "salut";
+
+    /* Used to handle permission request */
+    private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,11 +97,82 @@ public class MainActivity extends AppCompatActivity implements
         adapter = new ShowAdapter(MainActivity.this, shows);
         mListView.setAdapter(adapter);
 
+        // Check if user has given permission to record audio
+        int permissionCheck = ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.RECORD_AUDIO);
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSIONS_REQUEST_RECORD_AUDIO);
+            return;
+        }
+        // Recognizer initialization is a time-consuming and it involves IO,
+        // so we execute it in async task
+        new SetupTask(this).execute();
+
+    }
+
+    private static class SetupTask extends AsyncTask<Void, Void, Exception> {
+        WeakReference<MainActivity> activityReference;
+        SetupTask(MainActivity activity) {
+            this.activityReference = new WeakReference<>(activity);
+        }
+        @Override
+        protected Exception doInBackground(Void... params) {
+            try {
+                Assets assets = new Assets(activityReference.get());
+                File assetDir = assets.syncAssets();
+                activityReference.get().setupRecognizer(assetDir);
+            } catch (IOException e) {
+                return e;
+            }
+            return null;
+        }
+        @Override
+        protected void onPostExecute(Exception result) {
+            if (result != null) {
+                Toast.makeText(activityReference.get(),
+                        "Failed to init recognizer " + result, Toast.LENGTH_SHORT).show();
+            } else {
+                activityReference.get().startWakeUpWordListening();
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == PERMISSIONS_REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Recognizer initialization is a time-consuming and it involves IO,
+                // so we execute it in async task
+                new SetupTask(this).execute();
+            } else {
+                finish();
+            }
+        }
+    }
+
+    private void setupRecognizer(File assetsDir) throws IOException {
+        // The recognizer can be configured to perform multiple searches
+        // of different kind and switch between them
+
+        recognizer = SpeechRecognizerSetup.defaultSetup()
+                .setAcousticModel(new File(assetsDir, "cmusphinx-fr-ptm-5.2"))
+                .setDictionary(new File(assetsDir, "cmudict-fr-fr.dic"))
+
+                .setRawLogDir(assetsDir) // To disable logging of raw audio comment out this call (takes a lot of space on the device)
+
+                .getRecognizer();
+        recognizer.addListener(this);
+
+        // Create keyword-activation search.
+        recognizer.addKeyphraseSearch(KWS_SEARCH, WAKEUPWORD);
+
+        Log.d("SPHINX", "Recognizer set up");
     }
 
     private void startSpeechToText() {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.FRENCH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
@@ -133,22 +235,20 @@ public class MainActivity extends AppCompatActivity implements
                                 adapter.notifyDataSetChanged();
                                 speakOut();
                             } catch (JSONException e) {
-                                txtOutput.setText("That didn't work!");
+                                txtOutput.setText(ERROR_MESSAGE_USER);
                             }
                         }
                     }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    txtOutput.setText("That didn't work!");
+                    txtOutput.setText(ERROR_MESSAGE_USER);
                 }
-
-
             });
 
             // Add the request to the RequestQueue.
             queue.add(stringRequest);
         } catch (JSONException e) {
-            txtOutput.setText("That didn't work!");
+            txtOutput.setText(ERROR_MESSAGE_USER);
         }
 
     }
@@ -167,14 +267,33 @@ public class MainActivity extends AppCompatActivity implements
     public void onInit(int status) {
 
         if (status == TextToSpeech.SUCCESS) {
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override
+                public void onStart(String utteranceId) {
+                    if (TTS_UTTERANCE.equals(utteranceId)) {
+                        stopWakeUpWordListening();
+                    }
+                }
 
+                @Override
+                public void onDone(String utteranceId) {
+                    if (TTS_UTTERANCE.equals(utteranceId)) {
+                        startWakeUpWordListening();
+                    }
+                }
+
+                @Override
+                public void onError(String utteranceId) {
+                    if (TTS_UTTERANCE.equals(utteranceId)) {
+                        startWakeUpWordListening();
+                    }
+                }
+            });
             int result = tts.setLanguage(Locale.FRENCH);
-
             if (result == TextToSpeech.LANG_MISSING_DATA
                     || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("TTS", "This Language is not supported");
             }
-
         } else {
             Log.e("TTS", "Initilization Failed!");
         }
@@ -182,20 +301,66 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void speakOut() {
-
         String text = txtOutput.getText().toString();
-
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, TTS_UTTERANCE);
     }
 
     private List<Show> genererTweets(){
-        List<Show> shows = new ArrayList<Show>();
-        shows.add(new Show(Color.BLACK, "Florent", "Mon premier tweet !"));
-        shows.add(new Show(Color.BLUE, "Kevin", "C'est ici que ça se passe !"));
-        shows.add(new Show(Color.GREEN, "Logan", "Que c'est beau..."));
-        shows.add(new Show(Color.RED, "Mathieu", "Il est quelle heure ??"));
-        shows.add(new Show(Color.GRAY, "Willy", "On y est presque"));
-        return shows;
+        return Collections.emptyList();
     }
 
+    @Override
+    public void onBeginningOfSpeech() {
+        Log.d("SPHINX", "beginning of speech");
+    }
+
+    @Override
+    public void onEndOfSpeech() {
+        Log.d("SPHINX", "end of speech");
+    }
+
+    @Override
+    public void onPartialResult(Hypothesis hypothesis) {
+        if (hypothesis != null) {
+            String text = hypothesis.getHypstr();
+            Log.d("SPHINX", "Partial result " + text);
+            if (WAKEUPWORD.equals(text)) {
+                stopWakeUpWordListening();
+            }
+            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onResult(Hypothesis hypothesis) {
+        if (hypothesis != null) {
+            String text = hypothesis.getHypstr();
+            Log.d("SPHINX", "onResult " + text);
+            if (WAKEUPWORD.equals(text)) {
+                stopWakeUpWordListening();
+                startSpeechToText();
+            }
+            Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onError(Exception e) {
+        Toast.makeText(getApplicationContext(),
+                "Error on pocketsphinx speech recognition.",
+                Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onTimeout() {
+        startWakeUpWordListening();
+    }
+
+    private void startWakeUpWordListening() {
+        recognizer.startListening(KWS_SEARCH);
+    }
+
+    private void stopWakeUpWordListening() {
+        recognizer.stop();
+    }
 }
