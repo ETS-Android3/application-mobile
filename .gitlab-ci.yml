@@ -1,0 +1,92 @@
+image: runmymind/docker-android-sdk:alpine-standalone
+
+variables:
+  KEYSTORE_PATH: '.keystore/keystore.jks'
+  PLAY_KEYS_PATH: '.keystore/keys.json'
+  PROPERTIES_PATH: 'keystore.properties'
+  SLAVE_AAPT_TIMEOUT: '30'
+  GIT_SSL_NO_VERIFY: 1
+  HOST_NAME: "gitlab.milobella.com"
+
+
+before_script:
+- export GITLAB_USER_NAME=$(echo $GITLAB_USER_LOGIN)
+- export GRADLE_USER_HOME=`pwd`/.gradle
+- chmod +x gradlew
+- echo $ANDROID_KEYSTORE | base64 -d > ${KEYSTORE_PATH}
+- echo $ANDROID_PLAY_KEYS_JSON > ${PLAY_KEYS_PATH}
+- echo "storeFile=${KEYSTORE_PATH}" >> ${PROPERTIES_PATH}
+- echo "storePassword=${ANDROID_STORE_PASSWORD}" >> ${PROPERTIES_PATH}
+- echo "keyAlias=${ANDROID_KEY_ALIAS}" >> ${PROPERTIES_PATH}
+- echo "keyPassword=${ANDROID_KEY_PASSWORD}" >> ${PROPERTIES_PATH}
+- echo "playKeysFile=${PLAY_KEYS_PATH}" >> ${PROPERTIES_PATH}
+- git config user.email ${GITLAB_USER_EMAIL}
+- git config user.name ${GITLAB_USER_NAME}
+
+cache:
+  paths:
+  - .gradle/wrapper
+  - .gradle/caches
+
+stages:
+- build
+- test
+- version
+- deploy
+
+build:
+  stage: build
+  script:
+  - chmod +x gradlew
+  - ./gradlew clean assemble
+  artifacts:
+    paths:
+    - app/build/outputs/apk
+  tags: [docker]
+
+test:
+  stage: test
+  script:
+  - chmod +x gradlew
+  - ./gradlew test
+  tags: [docker]
+
+bump_version:
+  stage: version
+  script:
+  # Retrieves version name from app/build.gradle
+  - VERSION_SNAP=`./gradlew -q printVersionName`
+  - VERSION=`echo $VERSION_SNAP | sed 's_-SNAPSHOT__'`
+  # Remove the snapshot suffix in app/build.gradle
+  - sed -i.bak "s/${VERSION_SNAP}/${VERSION}/" app/build.gradle
+  # Commit and push a new tag corresponding to this version
+  - git add app/build.gradle
+  - git commit -m "Bump version ${VERSION}"
+  - git tag ${VERSION}
+  - git push --tags http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
+  when: manual
+  allow_failure: false
+  only: [master]
+  tags: [docker]
+
+deploy_play_store:
+  stage: deploy
+  script:
+  # Store current bumped versionCode and versionName
+  - CURRENT_VERSION_CODE=`./gradlew -q printVersionCode`
+  - CURRENT_VERSION_NAME=`./gradlew -q printVersionName`
+  # Publish the release
+  - ./gradlew publishRelease
+  # Increment versionCode and versionName
+  - NEW_VERSION_CODE=`./gradlew -q computeNextVersionCode`
+  - NEW_VERSION_NAME=`./gradlew -q computeNextVersionName`-SNAPSHOT
+  # Update versions fields in app/build.gradle
+  - sed -i.bak -r "s/versionCode\s+${CURRENT_VERSION_CODE}/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
+  - sed -i.bak -r "s/versionName\s+\"${CURRENT_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
+  - git add app/build.gradle
+  - git commit -m "Start a new version ${NEW_VERSION_NAME}"
+  - git push http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
+  when: on_success
+  allow_failure: false
+  only: [master]
+  tags: [docker]

@@ -3,6 +3,11 @@ plugins {
     id 'com.github.triplet.play' version '2.2.0'
 }
 
+// Load release keystore
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
 // Configure the google play automatic release
 play {
     serviceAccountCredentials = rootProject.file(keystoreProperties['playKeysFile'])
@@ -11,6 +16,16 @@ play {
 
 android {
     compileSdkVersion 27
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+        }
+    }
+
     defaultConfig {
         applicationId "fr.celiangarcia.milobella"
         minSdkVersion 21
@@ -22,7 +37,12 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            versionNameSuffix "-debug"
         }
     }
 }
@@ -36,4 +56,34 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
+
+task printVersionCode {
+    doLast {
+        print android.defaultConfig.versionCode
+    }
+}
+
+task computeNextVersionCode {
+    doLast {
+        print android.defaultConfig.versionCode + 1
+    }
+}
+
+task printVersionName {
+    doLast {
+        print android.defaultConfig.versionName
+    }
+}
+
+task computeNextVersionName {
+    doLast {
+        def m
+        if ((m = android.defaultConfig.versionName =~ /(\d+)\.(\d+)\.(\d+)/)) {
+            def major = m.group(1) as Integer
+            def minor = (m.group(2) as Integer) + 1
+            def fix = 0
+            print "${major}.${minor}.${fix}"
+        }
+    }
 }
