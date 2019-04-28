@@ -12,6 +12,7 @@ keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 play {
     serviceAccountCredentials = rootProject.file(keystoreProperties['playKeysFile'])
     track = 'alpha'
+    defaultToAppBundles = true
 }
 
 android {

@@ -76,7 +76,7 @@ deploy_play_store:
   - CURRENT_VERSION_CODE=`./gradlew -q printVersionCode`
   - CURRENT_VERSION_NAME=`./gradlew -q printVersionName`
   # Publish the release
-  - ./gradlew publishRelease
+  - ./gradlew publish
   # Increment versionCode and versionName
   - NEW_VERSION_CODE=`./gradlew -q computeNextVersionCode`
   - NEW_VERSION_NAME=`./gradlew -q computeNextVersionName`-SNAPSHOT
