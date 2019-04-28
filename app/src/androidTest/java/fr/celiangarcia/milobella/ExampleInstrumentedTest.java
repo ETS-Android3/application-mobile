@@ -1,4 +1,4 @@
-package fr.celiangarcia.milobellla;
+package fr.celiangarcia.milobella;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("fr.celiangarcia.milobellla", appContext.getPackageName());
+        assertEquals("fr.celiangarcia.milobella", appContext.getPackageName());
     }
 }

@@ -1,4 +1,4 @@
-package fr.celiangarcia.milobellla;
+package fr.celiangarcia.milobella;
 
 import android.Manifest;
 import android.content.ActivityNotFoundException;

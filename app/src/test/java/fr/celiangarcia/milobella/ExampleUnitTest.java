@@ -1,4 +1,4 @@
-package fr.celiangarcia.milobellla;
+package fr.celiangarcia.milobella;
 
 import org.junit.Test;
 

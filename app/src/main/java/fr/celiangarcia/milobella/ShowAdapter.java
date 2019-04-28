@@ -1,4 +1,4 @@
-package fr.celiangarcia.milobellla;
+package fr.celiangarcia.milobella;
 
 import android.content.Context;
 import android.graphics.drawable.ColorDrawable;
