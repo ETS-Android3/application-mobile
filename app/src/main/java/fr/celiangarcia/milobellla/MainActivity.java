@@ -202,7 +202,8 @@ public class MainActivity extends AppCompatActivity implements
     protected void makeMilobellaCall(String text) {
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(this);
-        String url = "http://192.168.1.21:9100/talk/text";
+//        String url = "http://90.116.172.57:31333/talk/text";
+        String url = "http://192.168.1.15:31333/talk/text";
 
         try {
             final JSONObject jsonBody = new JSONObject("{\n" +
