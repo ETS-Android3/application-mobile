@@ -11,7 +11,7 @@ keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 // Configure the google play automatic release
 play {
     serviceAccountCredentials = rootProject.file(keystoreProperties['playKeysFile'])
-    track = 'beta'
+    track = 'alpha'
 }
 
 android {
