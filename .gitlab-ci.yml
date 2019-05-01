@@ -8,7 +8,6 @@ variables:
   GIT_SSL_NO_VERIFY: 1
   HOST_NAME: "gitlab.milobella.com"
 
-
 before_script:
 - export GITLAB_USER_NAME=$(echo $GITLAB_USER_LOGIN)
 - export GRADLE_USER_HOME=`pwd`/.gradle
@@ -57,7 +56,7 @@ bump_version:
   stage: version
   script:
   # Retrieves version name from app/build.gradle
-  - VERSION_SNAP=`./gradlew -q printVersionName`
+  - VERSION_SNAP=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
   - VERSION=`echo $VERSION_SNAP | sed 's_-SNAPSHOT__'`
   - echo $VERSION_SNAP
   - echo $VERSION
@@ -77,13 +76,13 @@ deploy_play_store:
   stage: deploy
   script:
   # Store current bumped versionCode and versionName
-  - CURRENT_VERSION_CODE=`./gradlew -q printVersionCode`
-  - CURRENT_VERSION_NAME=`./gradlew -q printVersionName`
+  - CURRENT_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionCode`
+  - CURRENT_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
   # Publish the release
   - ./gradlew publish
   # Increment versionCode and versionName
-  - NEW_VERSION_CODE=`./gradlew -q computeNextVersionCode`
-  - NEW_VERSION_NAME=`./gradlew -q computeNextVersionName`-SNAPSHOT
+  - NEW_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false computeNextVersionCode`
+  - NEW_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false computeNextVersionName`-SNAPSHOT
   # Update versions fields in app/build.gradle
   - sed -i.bak -r "s/versionCode\s+${CURRENT_VERSION_CODE}/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
   - sed -i.bak -r "s/versionName\s+\"${CURRENT_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
