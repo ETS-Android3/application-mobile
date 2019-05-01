@@ -52,42 +52,35 @@ test:
   tags: [docker]
   except: [master]
 
-bump_version:
+bump_version_and_deploy:
   stage: version
   script:
   # Retrieves version name from app/build.gradle
-  - VERSION_SNAP=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
-  - VERSION=`echo $VERSION_SNAP | sed 's_-SNAPSHOT__'`
+  - SNAPSHOT_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
+  - DEPLOYED_VERSION_NAME=`echo ${SNAPSHOT_VERSION_NAME} | sed 's_-SNAPSHOT__'`
   # Remove the snapshot suffix in app/build.gradle
-  - sed -i "s_${VERSION_SNAP}_${VERSION}_" app/build.gradle
-  # Commit and push a new tag corresponding to this version
-  - git add app/build.gradle
-  - git commit -m "Bump version ${VERSION}"
-  - git tag ${VERSION}
-  when: manual
-  allow_failure: false
-  only: [master]
-  tags: [docker]
-
-deploy_play_store:
-  stage: deploy
-  script:
-  - git log
+  - sed -i "s_${SNAPSHOT_VERSION_NAME}_${DEPLOYED_VERSION_NAME}_" app/build.gradle
   # Store current bumped versionCode and versionName
-  - CURRENT_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionCode`
-  - CURRENT_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
+  - DEPLOYED_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionCode`
+  - DEPLOYED_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
   # Publish the release
   - ./gradlew publish
+  # If the publication succeeded, commit and tag the bumped version
+  - git add app/build.gradle
+  - git commit -m "Bump version ${DEPLOYED_VERSION_NAME}"
+  - git tag ${DEPLOYED_VERSION_NAME}
   # Increment versionCode and versionName
   - NEW_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false computeNextVersionCode`
   - NEW_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false computeNextVersionName`-SNAPSHOT
   # Update versions fields in app/build.gradle
-  - sed -i -r "s/versionCode\s+${CURRENT_VERSION_CODE}/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
-  - sed -i -r "s/versionName\s+\"${CURRENT_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
+  - sed -i -r "s/versionCode\s+${DEPLOYED_VERSION_CODE}/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
+  - sed -i -r "s/versionName\s+\"${DEPLOYED_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
+  # Commit the start of the new version
   - git add app/build.gradle
   - git commit -m "Start a new version ${NEW_VERSION_NAME}"
-  - git --tags push http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
-  when: on_success
+  # Push both of freshly created commits
+  - git push --tags http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
+  when: manual
   allow_failure: false
   only: [master]
   tags: [docker]
