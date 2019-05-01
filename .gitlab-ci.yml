@@ -86,7 +86,7 @@ deploy_play_store:
   - sed -i -r "s/versionName\s+\"${CURRENT_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
   - git add app/build.gradle
   - git commit -m "Start a new version ${NEW_VERSION_NAME}"
-  - git push http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
+  - git --tags push http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
   when: on_success
   allow_failure: false
   only: [master]
