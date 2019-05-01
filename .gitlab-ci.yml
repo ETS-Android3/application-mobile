@@ -64,7 +64,6 @@ bump_version:
   - git add app/build.gradle
   - git commit -m "Bump version ${VERSION}"
   - git tag ${VERSION}
-  - git push --tags http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
   when: manual
   allow_failure: false
   only: [master]
@@ -73,6 +72,7 @@ bump_version:
 deploy_play_store:
   stage: deploy
   script:
+  - git log
   # Store current bumped versionCode and versionName
   - CURRENT_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionCode`
   - CURRENT_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
