@@ -58,8 +58,6 @@ bump_version:
   # Retrieves version name from app/build.gradle
   - VERSION_SNAP=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false printVersionName`
   - VERSION=`echo $VERSION_SNAP | sed 's_-SNAPSHOT__'`
-  - echo $VERSION_SNAP
-  - echo $VERSION
   # Remove the snapshot suffix in app/build.gradle
   - sed -i "s_${VERSION_SNAP}_${VERSION}_" app/build.gradle
   # Commit and push a new tag corresponding to this version
