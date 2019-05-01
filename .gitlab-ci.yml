@@ -82,8 +82,8 @@ deploy_play_store:
   - NEW_VERSION_CODE=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false computeNextVersionCode`
   - NEW_VERSION_NAME=`./gradlew -q -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false computeNextVersionName`-SNAPSHOT
   # Update versions fields in app/build.gradle
-  - sed -i.bak -r "s/versionCode\s+${CURRENT_VERSION_CODE}/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
-  - sed -i.bak -r "s/versionName\s+\"${CURRENT_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
+  - sed -i -r "s/versionCode\s+${CURRENT_VERSION_CODE}/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
+  - sed -i -r "s/versionName\s+\"${CURRENT_VERSION_NAME}\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
   - git add app/build.gradle
   - git commit -m "Start a new version ${NEW_VERSION_NAME}"
   - git push http://Garcia:${GARCIA_PERSONAL_TOKEN}@${HOST_NAME}/${CI_PROJECT_PATH}.git HEAD:master
